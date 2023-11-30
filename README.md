@@ -1,2 +1,2 @@
 # MicroLogger
-Code for data logging analog and digital data as .cvs on a SD card and atmega328 microcontroller. 
+Atmega328p based data logger for digital and analog sensors. Compatible with sd card logging as .csv and serial plotting formatted data.
