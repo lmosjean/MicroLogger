@@ -10,7 +10,8 @@
 #define OLED_RESET     4
 #define SCREEN_ADDRESS 0x3C 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
+#include "RTCManager.h"
+RTCManager rtcManager;
 //configuração do modulo sd 
 #define CSpin  10
 String dataString =""; // holds the data to be written to the SD card
@@ -41,13 +42,131 @@ float To = 298.15;
 unsigned long timer =0;
 unsigned long lastup=0;
 
+
+#include <ThreeWire.h>
+#include <RtcDS1302.h>
+
+class RTCManager {
+public:
+    RTCManager() : myWire(4, 5, 2), Rtc(myWire) {}
+
+    void initialize() {
+        Serial.begin(9600);
+        Rtc.Begin();
+        Serial.print("Compilado em: ");
+        RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
+        printDateTime(compiled);
+        Serial.println();
+        Serial.println();
+
+        if (Rtc.GetIsWriteProtected()) {
+            Serial.println("RTC está protegido contra gravação. Habilitando a gravação agora...");
+            Rtc.SetIsWriteProtected(false);
+            Serial.println();
+        }
+
+        if (!Rtc.GetIsRunning()) {
+            Serial.println("RTC não está funcionando de forma contínua. Iniciando agora...");
+            Rtc.SetIsRunning(true);
+            Serial.println();
+        }
+
+        RtcDateTime now = Rtc.GetDateTime();
+        if (now < compiled) {
+            Serial.println("As informações atuais do RTC estão desatualizadas. Atualizando informações...");
+            Rtc.SetDateTime(compiled);
+            Serial.println();
+        }
+        else if (now > compiled) {
+            Serial.println("As informações atuais do RTC são mais recentes que as de compilação. Isso é o esperado.");
+            Serial.println();
+        }
+        else if (now == compiled) {
+            Serial.println("As informações atuais do RTC são iguais as de compilação! Não é o esperado, mas está tudo OK.");
+            Serial.println();
+        }
+    }
+
+    void loop() {
+        RtcDateTime now = Rtc.GetDateTime();
+        printDateTime(now);
+        Serial.println();
+        delay(1000);
+    }
+
+    void setDateTimeManually() {
+        Serial.println("Configurando data e hora manualmente...");
+
+        int year, month, day, hour, minute, second;
+
+        Serial.print("Ano (ex. 2023): ");
+        while (!Serial.available()) {}
+        year = Serial.parseInt();
+        Serial.println(year);
+
+        Serial.print("Mês (1-12): ");
+        while (!Serial.available()) {}
+        month = Serial.parseInt();
+        Serial.println(month);
+
+        Serial.print("Dia (1-31): ");
+        while (!Serial.available()) {}
+        day = Serial.parseInt();
+        Serial.println(day);
+
+        Serial.print("Hora (0-23): ");
+        while (!Serial.available()) {}
+        hour = Serial.parseInt();
+        Serial.println(hour);
+
+        Serial.print("Minuto (0-59): ");
+        while (!Serial.available()) {}
+        minute = Serial.parseInt();
+        Serial.println(minute);
+
+        Serial.print("Segundo (0-59): ");
+        while (!Serial.available()) {}
+        second = Serial.parseInt();
+        Serial.println(second);
+
+        RtcDateTime newDateTime(year, month, day, hour, minute, second);
+        Rtc.SetDateTime(newDateTime);
+
+        Serial.println("Configuração concluída!");
+    }
+    void getDate(){}
+    void getTime(){}
+    
+private:
+    ThreeWire myWire;
+    RtcDS1302<ThreeWire> Rtc;
+
+    void printDateTime(const RtcDateTime& dt) {
+        char datestring[20];
+        snprintf_P(datestring,
+                   countof(datestring),
+                   PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+                   dt.Day(),
+                   dt.Month(),
+                   dt.Year(),
+                   dt.Hour(),
+                   dt.Minute(),
+                   dt.Second());
+        Serial.print(datestring);
+    }
+};
+
+RTCManager rtcManager;
+
+
+
 void setup(){
     Serial.begin(9600);
     Serial.print("Initializing SD card...");
 
 
     pinMode(CSpin, OUTPUT);
-    
+    rtcManager.initialize();
     if (!SD.begin(CSpin)) {
     Serial.println("Card failed, or not present");
     // don't do anything more:
@@ -124,7 +243,10 @@ void atualizadisplay(){
     lastup=millis();
   } 
 }
+/*
+Adicionar ao codigo: menu de configuraçao do horario via terminal
 
+*/
 void configTime(){
     //adicionar logica de configuração da data e hora no modulo rtc
 }
